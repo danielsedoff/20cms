@@ -1,0 +1,427 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="generator" content="quickh"/>
+    <style>
+
+    </style>
+
+<title>
+20cms
+</title>
+</head>
+
+<body onload="firstThings();">
+
+
+<table style="width:100%;">
+<tr><td> <!--  login node -->
+
+<input type="password" id="pass_login">
+<a href="javascript:send_pass();"><span id="login_off">log in</span></a>
+<br>
+status: <span id="login_status">logged off</div>
+</td></tr>
+
+<tr><td> <!-- terminal node -->
+<textarea style="width:100%; height:200px" id="terminal" onclick="term_getline();" readonly>
+</textarea>
+</td></tr>
+
+<tr>
+    <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+</tr>
+
+<tr><td>  <!--  editor node -->
+<textarea style="width:100%; height:200px" id="textarea1">
+.
+</textarea>
+
+</td></tr>
+</table>
+
+
+<table>
+<tr>  <!--  controls node -->
+	<td><a href="javascript:changeconsole(1);">text +</a></td>
+	<td><a href="javascript:changeconsole(-1);">text -</a></td>
+	<td><a href="javascript:copy_term(0);">sel_all</a></td>
+	<td><a href="javascript:view_file();">view</a></td>
+	<td><a href="javascript:write_file();">write</a></td>
+	
+</tr>
+<tr>
+        <td><a href="javascript:delete_file();">unlink</a></td>
+        <td><a href="javascript:zip_file();">zip</a></td>
+	<td><a href="javascript:unzip_file();">unzip</a></td>
+        <td><a href="javascript:copy_file();">copy</a></td>
+        <td><a href="javascript:move_file();">move</a></td>
+</tr>
+<tr>
+    <td><a href="javascript:resizeText(1);">font +</a></td>
+    <td><a href="javascript:resizeText(-1);">font -</a></td>
+    <td><a href="javascript:cleartext();">clear</a></td>
+    <td><a href="javascript:show_fileupload();">up_file</a></td>
+    <td><a href="javascript:show_imageupload();">up_img</a></td>
+
+</tr>
+<tr>
+    <td><a href="javascript:ls_dir();">list</a></td>
+    <td><a href="javascript:ch_dir();">chdir</a></td>
+    <td><a href="javascript:mk_dir();">mkdir</a></td>
+    <td><a href="javascript:rm_dir();">rmdir</a></td>
+    <td><a href="javascript:foldertree();">tree</a></td>
+    
+</tr>
+    
+<tr><td colspan="5">
+    <div id="fileupload_div" hidden>
+    upload file: <div id="log"></div>
+    <input id="up_file_box" type="file"></input>
+    <a href="javascript:up_file();">upload</a>
+    <br>
+    save path:
+    <input id="up_filename" type="text"></input>
+    </div>
+</td></tr>
+
+<tr><td colspan="5">
+    <div id="imageupload_div" hidden>
+    upload img: <div id="log"></div>
+    <input id="up_image_box" type="file"></input>
+    <br>
+    <input id="img_width" type="text" value="1024"></input>
+    <br>
+    <label><input id="check_square" type="checkbox">square</label>
+    <a href="javascript:up_image();">upload</a>
+    <br>
+    save path:
+    <input id="up_imagename" type="text"></input>
+    </div>
+</td></tr>
+
+<tr>
+<td colspan="5">
+	<div id="current_folder"></div>
+</td>
+</tr>
+
+
+</table>
+
+<script>
+
+function send_post(php_file, para1, val1, para2, val2, para3, val3) {
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function(){
+        if(xhr.readyState == 4 && xhr.status == 200) {
+            if(php_file == "view_file.php") {
+	        ta1 = gbi("textarea1"); 
+                ta1.value = xhr.responseText;
+	    } else {
+                echo(xhr.responseText);
+	    }
+	}
+    }
+    xhr.open("POST", php_file, true);
+    envelope = new FormData();
+    envelope.append("dir", encodeURIComponent(current_folder()));
+    envelope.append("user_id", encodeURIComponent(getCookie("user_id_cookie")));
+    
+    envelope.append(para1,encodeURIComponent(val1));
+    envelope.append(para2,encodeURIComponent(val2));
+    envelope.append(para3,encodeURIComponent(val3));
+    
+    xhr.send(envelope);
+}
+
+function send_pass() {
+	var xhttp = new XMLHttpRequest();
+	xhttp.onreadystatechange = function(){
+		if(xhttp.readyState == 4 && xhttp.status ==200) {
+		        rt = xhttp.responseText;
+			setCookie("user_id_cookie", rt);
+			x = gbi("login_status");
+			y = gbi("login_off");
+			
+			if(rt != "wrong pass") {
+			    x.innerHTML = "logged in"; 
+			    y.innerHTML = "log off";
+                            ch_dir(".");
+			} else {
+			    x.innerHTML = "logged off";
+			    y.innerHTML = "log in";
+			}
+		}
+	}
+	xhttp.open("post", "login.php");
+	xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	xhttp.send("users_pass=" + encodeURIComponent(document.getElementById("pass_login").value));
+	document.getElementById("pass_login").value = "12345";
+}
+
+function  current_folder() {
+    cf =gbi("current_folder").innerHTML;
+    pos1=cf.indexOf(": ") + ": ".length;
+    pos2=cf.indexOf("\n", pos1);
+    return(cf.substring(pos1, pos2));
+}
+
+function firstThings() {
+    resizeText(1);
+}
+
+function log(html) {
+    document.getElementById('log').innerHTML = html;
+}
+
+function up_image() {
+    a = gbi("up_image_box");
+    b = a.files[0];
+    check_square_checked = gbi("check_square").checked ? 1 : 0;
+    
+    send_post("up_image.php", 
+	            "theimage", b, 
+	            "width", gbi("img_width").value,
+	            "square", check_square_checked);
+}
+
+function up_file() { 
+    a = gbi("up_file_box");
+    b = a.files[0];
+
+    send_post("up_file.php", 
+	             "thefile", b);
+}
+
+function show_fileupload(){
+    x = gbi("fileupload_div").hidden;
+    gbi("fileupload_div").hidden = ( x ? false : true);
+}
+
+function show_imageupload(){
+    x = gbi("imageupload_div").hidden;
+    gbi("imageupload_div").hidden = ( x ? false : true);
+}
+
+
+function write_file(){
+    a = gbi("textarea1");
+    var write_content = a.value;
+    var write_file = prompt("File to create/overwrite: ");
+    if(confirm("Create/overwrite " + write_file + 
+	            " with the content: " + write_content)) {
+        send_post("write_file.php", 
+	                "write_file", write_file, 
+	                "write_content", write_content);
+    }
+}	
+	
+
+function ls_dir() {
+    send_post("dirs.php", 
+	             "folder", current_folder,
+	             "action", "ls");
+
+}
+
+
+function ch_dir(location) {
+    if(location == undefined) {
+        a = gbi("textarea1");
+        b = a.value.split("\n");
+        ch_dir1 = b[0];
+    } else {
+	ch_dir1 = location;
+    }
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function(){
+        if(xhttp.readyState == 4 && xhttp.status ==200) {
+            curr_folder = (xhttp.responseText);
+	    gbi("current_folder").innerHTML = curr_folder;
+	    echo(curr_folder);
+	}
+    }
+    xhttp.open("post", "dirs.php");
+    xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xhttp.send("dir=" + encodeURIComponent(current_folder()) + "&user_id=" + encodeURIComponent(getCookie("user_id_cookie")) + 
+    "&folder=" + encodeURIComponent(ch_dir1) + 
+    "&action=" + encodeURIComponent("chdir"));
+}
+
+function mk_dir() {
+    a = gbi("textarea1");
+    b = a.value.split("\n");
+    mk_dir1 = b[0];
+    
+    send_post("dirs.php",
+		     "folder", mk_dir1,
+	             "action", "mkdir");
+}
+
+function rm_dir() {
+    a = gbi("textarea1");
+    b = a.value.split("\n");
+    rm_dir1 = b[0];
+    send_post("dirs.php",
+		     "folder", rm_dir1,
+	             "action", "rmdir");
+}
+
+
+function view_file() {
+    a = gbi("textarea1");
+    b = a.value.split("\n");
+    view_file1 = b[0];
+    
+	if(confirm("View " + view_file1 + "?")) {
+            send_post("view_file.php", 		
+		            "view_file", view_file1);
+	}
+
+}
+
+
+function echo(what) {
+    a = gbi("terminal");
+	a.value = a.value + what + "\n";
+    a.scrollTop = a.scrollHeight;
+}
+
+function gbi(x){return(document.getElementById(x));}
+
+function copy_term(){
+    a=gbi("textarea1");
+    b=gbi("terminal");
+    if(confirm("Copy to the editor?")) {
+        a.value = b.value;
+    }   
+}
+
+
+
+function unzip_file(){
+    a = gbi("textarea1");
+    b = a.value.split("\n");
+    zipfile = b[0];
+    extdir = prompt("Extract " + zipfile + "to directory: ");
+
+    if (confirm("extract?") == true) {
+        send_post("uz.php",
+	                "zipfile", zipfile,
+	                "extdir", extdir);
+    	}
+}
+
+
+function zip_file(){
+    zipto=prompt("Archive path and filename:");
+    a=gbi("textarea1");
+    if (confirm("Zip all the specified files:\n" + a.value + "\n into: " + zipto)) {
+        send_post("zip_file.php",
+			"zipto", zipto,
+	                "zip_files", a.value);
+	    }
+}
+
+function move_file(){
+    moveto=prompt("Move to:");
+    a=gbi("textarea1");
+    if (confirm("Move all the specified files:\n" + a.value + "\n to: " + moveto)) {
+        send_post("move_file.php",
+	                "moveto", moveto,
+			"move_files", a.value);
+    }
+}
+
+
+function copy_file(){
+    copyto=prompt("Copy to:");
+    a=gbi("textarea1");
+    if (confirm("Copy all the specified files:\n" + a.value + "\n to: " + copyto)) {
+        send_post("copy_file.php",
+			"copyto", copyto,
+                        "copy_files", a.value);
+    }
+}
+    
+
+function delete_file(){
+    a=gbi("textarea1");
+    if (confirm("Delete all the specified files:\n" + a.value)) {
+        send_post("delete_file.php",
+	                "delete_files", a.value);
+    }
+}
+
+
+function foldertree() {
+    send_post("iterator.php", "none", "none"); 
+}
+
+
+function setCookie(cname, cvalue) {
+    document.cookie = cname + "=" + cvalue + "; ";
+}
+
+function getCookie(cname) {
+    var name = cname + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0; i<ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1);
+        if (c.indexOf(name) == 0) return c.substring(name.length, c.length);
+    }
+    return "";
+}
+
+function cleartext() {
+    gbi("textarea1").value="";
+    gbi("terminal").value="";
+
+}
+
+function term_getline(){
+    t = gbi("terminal");
+    numline = (t.value.substr(0, t.selectionStart).split("\n").length) - 1;
+    theline = t.value.split("\n")[numline];
+    t2 = gbi("textarea1");
+	
+    t2.value = theline + "\n" + t2.value;
+}
+
+function resizeText(multiplier) {
+
+    allElements = document.getElementsByTagName("*");
+    for (i=0, max=allElements.length; i < max; i++) {
+        
+        thisElement = allElements[i];
+        if (thisElement.style.fontSize == "") {
+            thisElement.style.fontSize = "20px";
+        }
+        thisElement.style.fontFamily = "Sans";
+	 if(thisElement.type == "textarea") {
+	     thisElement.style.fontSize = parseFloat(thisElement.style.fontSize) + (multiplier * 1.5) + "px";
+	} else {
+	    thisElement.style.fontSize = parseFloat(thisElement.style.fontSize) + (multiplier * 3) + "px";
+	}
+    }
+    
+}
+
+function changeconsole(parameter) {
+    a=gbi("textarea1");
+    b=gbi("terminal");
+    
+    c=parseInt(a.style.height);
+    c += (50 * parameter);
+    d = c + "px";
+    
+    a.style.height = b.style.height = d;    
+}
+
+
+
+</script>
+</body></html>
